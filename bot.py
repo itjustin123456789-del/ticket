@@ -87,6 +87,7 @@ class TicketBot(commands.Bot):
         await self.load_extension('cogs.admin')
         await self.load_extension('cogs.welcome')
         await self.load_extension('cogs.logging_cog')
+        await self.load_extension('cogs.modmail')
         
     async def on_ready(self):
         await self.tree.sync()
