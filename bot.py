@@ -39,7 +39,9 @@ class TicketBot(commands.Bot):
         await self.load_cogs()
         
     async def init_database(self):
-        self.db = await aiosqlite.connect('tickets.db')
+        import os
+        db_path = os.getenv('DB_PATH', 'tickets.db')
+        self.db = await aiosqlite.connect(db_path)
         await self.db.execute('''
             CREATE TABLE IF NOT EXISTS ticket_configs (
                 guild_id INTEGER PRIMARY KEY,
