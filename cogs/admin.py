@@ -371,6 +371,93 @@ class Admin(commands.Cog):
             timestamp=datetime.now()
         )
         await interaction.response.send_message(embed=embed)
+    
+    @app_commands.command(name="add_key", description="Add a license key")
+    @app_commands.describe(key="License key to add")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def add_key(self, interaction: discord.Interaction, key: str):
+        try:
+            await self.bot.db.execute(
+                'INSERT INTO license_keys (key) VALUES (?)',
+                (key,)
+            )
+            await self.bot.db.commit()
+            await interaction.response.send_message(f"✅ Key `{key}` added!")
+        except:
+            await interaction.response.send_message(f"❌ Key `{key}` already exists!", ephemeral=True)
+    
+    @app_commands.command(name="delete_key", description="Delete a specific license key")
+    @app_commands.describe(key="License key to delete")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def delete_key(self, interaction: discord.Interaction, key: str):
+        cursor = await self.bot.db.execute(
+            'DELETE FROM license_keys WHERE key = ?',
+            (key,)
+        )
+        await self.bot.db.commit()
+        
+        if cursor.rowcount > 0:
+            await interaction.response.send_message(f"✅ Key `{key}` deleted!")
+        else:
+            await interaction.response.send_message(f"❌ Key `{key}` not found!", ephemeral=True)
+    
+    @app_commands.command(name="list_keys", description="List all license keys")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def list_keys(self, interaction: discord.Interaction):
+        async with self.bot.db.execute(
+            'SELECT key, hwid, created_at, last_used, is_active FROM license_keys'
+        ) as cursor:
+            keys = await cursor.fetchall()
+        
+        if not keys:
+            return await interaction.response.send_message("❌ No keys found!", ephemeral=True)
+        
+        embed = discord.Embed(
+            title="🔑 License Keys",
+            color=discord.Color.blue(),
+            timestamp=datetime.now()
+        )
+        
+        for key_data in keys:
+            key, hwid, created_at, last_used, is_active = key_data
+            status = "✅ Active" if is_active else "❌ Inactive"
+            embed.add_field(
+                name=key,
+                value=f"**Status:** {status}\n**HWID:** {hwid or 'Not bound'}\n**Created:** {created_at}\n**Last Used:** {last_used or 'Never'}",
+                inline=False
+            )
+        
+        await interaction.response.send_message(embed=embed)
+    
+    @app_commands.command(name="delete_all_keys", description="Delete ALL license keys (dangerous)")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def delete_all_keys(self, interaction: discord.Interaction):
+        # Confirm with the user
+        await interaction.response.send_message(
+            "⚠️ **WARNING: This will delete ALL license keys!**\n"
+            "Type `/confirm_delete_keys` to confirm this action.",
+            ephemeral=True
+        )
+    
+    @app_commands.command(name="confirm_delete_keys", description="Confirm deletion of all keys")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def confirm_delete_keys(self, interaction: discord.Interaction):
+        cursor = await self.bot.db.execute('SELECT COUNT(*) FROM license_keys')
+        count = (await cursor.fetchone())[0]
+        
+        if count == 0:
+            return await interaction.response.send_message("❌ No keys to delete!", ephemeral=True)
+        
+        await self.bot.db.execute('DELETE FROM license_keys')
+        await self.bot.db.commit()
+        
+        embed = discord.Embed(
+            title="🗑️ All Keys Deleted",
+            description=f"Successfully deleted {count} license keys.",
+            color=discord.Color.red(),
+            timestamp=datetime.now()
+        )
+        await interaction.response.send_message(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Admin(bot))

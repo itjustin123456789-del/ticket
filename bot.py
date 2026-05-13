@@ -82,6 +82,16 @@ class TicketBot(commands.Bot):
                 enabled INTEGER DEFAULT 1
             )
         ''')
+        await self.db.execute('''
+            CREATE TABLE IF NOT EXISTS license_keys (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                key TEXT UNIQUE NOT NULL,
+                hwid TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_used TIMESTAMP,
+                is_active INTEGER DEFAULT 1
+            )
+        ''')
         await self.db.commit()
         
     async def load_cogs(self):
